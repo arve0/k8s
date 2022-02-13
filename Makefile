@@ -61,7 +61,17 @@ registry: registry/password FORCE
 registry-login: registry/password
 	docker login registry.apps.${DOMAIN} --username ${USERNAME} --password-stdin < registry/password
 
-registry-list-repos: registry/password
+list-repos: registry/password
 	curl -u arve:$$(cat registry/password) https://registry.apps.arve.dev/v2/_catalog
+
+docker-pull-secret: registry/password
+	kubectl delete secret registry-credentials -n default || true
+	kubectl create secret docker-registry registry-credentials \
+		--namespace=default \
+		--docker-server=registry.apps.${DOMAIN} \
+		--docker-username=${USERNAME} \
+		--docker-password=$$(cat registry/password)
+	kubectl patch serviceaccount default -n default -p '{"imagePullSecrets": [{"name": "registry-credentials"}]}'
+
 
 FORCE:
