@@ -31,6 +31,7 @@ metadata:
   namespace: ingress-nginx
 data:
   allow-snippet-annotations: "true"
+  use-proxy-protocol: "true"
 ---
 # Source: ingress-nginx/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -274,7 +275,7 @@ metadata:
 spec:
   type: LoadBalancer
   ipFamilyPolicy: SingleStack
-  ipFamilies: 
+  ipFamilies:
     - IPv4
   ports:
     - name: http
@@ -327,7 +328,7 @@ spec:
         - name: controller
           image: "k8s.gcr.io/ingress-nginx/controller:v1.1.1@sha256:0bc88eb15f9e7f84e8e56c14fa5735aaa488b840983f87bd79b1054190e660de"
           imagePullPolicy: IfNotPresent
-          lifecycle: 
+          lifecycle:
             preStop:
               exec:
                 command:
@@ -342,7 +343,7 @@ spec:
             - --validating-webhook=:8443
             - --validating-webhook-certificate=/usr/local/certificates/cert
             - --validating-webhook-key=/usr/local/certificates/key
-          securityContext: 
+          securityContext:
             capabilities:
               drop:
               - ALL
@@ -361,7 +362,7 @@ spec:
                   fieldPath: metadata.namespace
             - name: LD_PRELOAD
               value: /usr/local/lib/libmimalloc.so
-          livenessProbe: 
+          livenessProbe:
             failureThreshold: 5
             httpGet:
               path: /healthz
@@ -371,7 +372,7 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 1
-          readinessProbe: 
+          readinessProbe:
             failureThreshold: 3
             httpGet:
               path: /healthz
@@ -395,11 +396,11 @@ spec:
             - name: webhook-cert
               mountPath: /usr/local/certificates/
               readOnly: true
-          resources: 
+          resources:
             requests:
               cpu: 100m
               memory: 90Mi
-      nodeSelector: 
+      nodeSelector:
         kubernetes.io/os: linux
       serviceAccountName: ingress-nginx
       terminationGracePeriodSeconds: 300
@@ -632,7 +633,7 @@ spec:
             allowPrivilegeEscalation: false
       restartPolicy: OnFailure
       serviceAccountName: ingress-nginx-admission
-      nodeSelector: 
+      nodeSelector:
         kubernetes.io/os: linux
       securityContext:
         runAsNonRoot: true
@@ -688,7 +689,7 @@ spec:
             allowPrivilegeEscalation: false
       restartPolicy: OnFailure
       serviceAccountName: ingress-nginx-admission
-      nodeSelector: 
+      nodeSelector:
         kubernetes.io/os: linux
       securityContext:
         runAsNonRoot: true

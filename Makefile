@@ -1,5 +1,6 @@
 DOMAIN ?= arve.dev
 EMAIL ?= arve+k8s@seljebu.no
+USERNAME ?= arve
 
 ingress/ingress.yaml: Makefile
 	helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
@@ -22,8 +23,39 @@ cert-manager/cert-manager.yaml: Makefile
 cert-manager: cert-manager/cert-manager.yaml FORCE
 	kubectl kustomize cert-manager \
 		| kubectl apply -f -
+
+letsencrypt: FORCE
 	kubectl wait pod --for=condition=Ready -l app=webhook -n cert-manager --timeout=120s
 	EMAIL=${EMAIL} envsubst < cert-manager/letsencrypt.yaml \
 		| kubectl apply -f -
+
+uninstall-cert-manager:
+	kubectl kustomize cert-manager \
+		| kubectl delete -f -
+	kubectl delete -n kube-system configmap cert-manager-cainjector-leader-election
+	kubectl delete -n kube-system configmap cert-manager-controller
+	kubectl delete -A service -l acme.cert-manager.io/http01-solver=true
+	kubectl delete -A ingress -l acme.cert-manager.io/http01-solver=true
+
+registry/password:
+	dd if=/dev/urandom bs=30 count=1 2>/dev/null | base64 > registry/password
+
+registry: FORCE
+	kubectl kustomize registry \
+		| DOMAIN=${DOMAIN} envsubst \
+		| kubectl apply -f -
+
+	htpasswd -ic auth ${USERNAME} < registry/password
+
+	if ! kubectl get secret registry-auth -n internal &>/dev/null; then \
+		kubectl create secret generic registry-auth -n internal --from-file=auth; \
+	fi
+	rm auth
+
+registry-login: registry/password
+	docker login registry.apps.${DOMAIN} --username ${USERNAME} --password-stdin < registry/password
+
+registry-list-repos: registry/password
+	curl -u arve:$$(cat registry/password) https://registry.apps.arve.dev/v2/_catalog
 
 FORCE:
