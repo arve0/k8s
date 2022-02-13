@@ -38,9 +38,15 @@ uninstall-cert-manager:
 	kubectl delete -A ingress -l acme.cert-manager.io/http01-solver=true
 
 registry/password:
-	dd if=/dev/urandom bs=30 count=1 2>/dev/null | base64 > registry/password
+	if kubectl get secret registry-auth -n internal &>/dev/null; then \
+		kubectl get secret registry-auth -n internal -o json \
+			| jq --raw-output .data.password \
+			| base64 -d > registry/password ; \
+	else \
+		dd if=/dev/urandom bs=30 count=1 2>/dev/null | base64 > registry/password; \
+	fi
 
-registry: FORCE
+registry: registry/password FORCE
 	kubectl kustomize registry \
 		| DOMAIN=${DOMAIN} envsubst \
 		| kubectl apply -f -
@@ -48,7 +54,7 @@ registry: FORCE
 	htpasswd -ic auth ${USERNAME} < registry/password
 
 	if ! kubectl get secret registry-auth -n internal &>/dev/null; then \
-		kubectl create secret generic registry-auth -n internal --from-file=auth; \
+		kubectl create secret generic registry-auth -n internal --from-file=auth --from-file=registry/password; \
 	fi
 	rm auth
 
