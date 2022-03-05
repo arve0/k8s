@@ -2,7 +2,9 @@ DOMAIN ?= arve.dev
 EMAIL ?= arve+k8s@seljebu.no
 USERNAME ?= arve
 
-ingress/ingress.yaml: Makefile
+all: ingress cert-manager letsencrypt registry registry-login docker-pull-secret
+
+ingress/ingress.yaml:
 	helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 	helm template ingress-nginx ingress-nginx/ingress-nginx \
 		--namespace ingress-nginx \
@@ -13,7 +15,7 @@ ingress: ingress/ingress.yaml FORCE
 		| DOMAIN=${DOMAIN} envsubst \
 		| kubectl apply -f -
 
-cert-manager/cert-manager.yaml: Makefile
+cert-manager/cert-manager.yaml:
 	helm repo add jetstack https://charts.jetstack.io
 	helm template cert-manager jetstack/cert-manager \
 		--namespace cert-manager \
